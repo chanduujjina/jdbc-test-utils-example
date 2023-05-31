@@ -4,7 +4,10 @@ import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 
 import javax.imageio.ImageIO;
 
@@ -16,6 +19,7 @@ import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.test.jdbc.JdbcTestUtils;
 
+import com.demo.Address;
 import com.demo.AppConfig;
 import com.demo.JdbcTemplatePersonDao;
 import com.demo.Person;
@@ -28,20 +32,26 @@ public class PersonDaoTests {
     private JdbcTemplatePersonDao personDao;
 
     @Test
-    public void saveBloBAsText() {
+    public void saveBloBAsText() throws IOException, ClassNotFoundException {
         JdbcTestUtils.deleteFromTables(personDao.getJdbcTemplate(), "PERSON");
 
        
         String name ="test Blob";
+        ByteArrayOutputStream arrayOutputStream = new ByteArrayOutputStream();
+        ObjectOutputStream outputStream = new ObjectOutputStream(arrayOutputStream);
+        outputStream.writeObject(name);
         //insert
-        Person person = Person.create("Dana", "Whitley", "464 Gorsuch Drive",name.getBytes());
+        Person person = Person.create("Dana", "Whitley", "464 Gorsuch Drive",arrayOutputStream.toByteArray());
         long generatedId = personDao.save(person);
         System.out.println("Generated Id: " + generatedId);
 
         //read
         Person loadedPerson = personDao.load(generatedId);
         byte[] image = loadedPerson.getImage();
-        String str=new String(image);  
+        ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(image);
+        ObjectInputStream objectInputStream = new ObjectInputStream(byteArrayInputStream);
+        String resultName =(String)objectInputStream.readObject();
+         
         System.out.println("Loaded Person: " + loadedPerson);
         Assert.assertNotNull(loadedPerson);
         Assert.assertTrue("Dana".equals(loadedPerson.getFirstName()));
@@ -67,9 +77,38 @@ public class PersonDaoTests {
         Assert.assertNotNull(loadedPerson);
         Assert.assertTrue("Dana".equals(loadedPerson.getFirstName()));
         
-        ByteArrayInputStream inStreambj = new ByteArrayInputStream(byteArray);
+        ByteArrayInputStream inStreambj = new ByteArrayInputStream(loadedPerson.getImage());
         BufferedImage newImage = ImageIO.read(inStreambj);
         ImageIO.write(newImage, "jpg", new File("outputImage.jpg") );
+    }
+    
+    @Test
+    public void saveBlobAsObject() throws IOException, ClassNotFoundException {
+    	
+    	Address address = new Address(1, "hyderabad", "Permenet");
+    	 ByteArrayOutputStream arrayOutputStream = new ByteArrayOutputStream();
+         ObjectOutputStream outputStream = new ObjectOutputStream(arrayOutputStream);
+         outputStream.writeObject(address);
+         
+       //insert
+         Person person = Person.create("Dana", "Whitley", "464 Gorsuch Drive",arrayOutputStream.toByteArray());
+         long generatedId = personDao.save(person);
+         System.out.println("Generated Id: " + generatedId);
+
+         //read
+         Person loadedPerson = personDao.load(generatedId);
+         byte[] image = loadedPerson.getImage();
+         ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(image);
+         ObjectInputStream objectInputStream = new ObjectInputStream(byteArrayInputStream);
+         Address resAddress = (Address)objectInputStream.readObject();
+          
+         System.out.println("Loaded Person: " + loadedPerson);
+         System.out.println(resAddress.toString());
+         Assert.assertNotNull(loadedPerson);
+         Assert.assertTrue("Dana".equals(loadedPerson.getFirstName()));
+
+    	
+    	
     }
     
 }
